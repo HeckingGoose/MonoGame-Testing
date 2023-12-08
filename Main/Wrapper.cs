@@ -60,10 +60,10 @@ namespace Main
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // Load fonts
-            fonts.Add("Arimo_12", Content.Load<SpriteFont>("Arimo_12"));
+            fonts.Add("Arimo_12", Content.Load<SpriteFont>(@"Fon\Arimo_12"));
 
             // Load Textures
-            textures.Add("ButtonSliced", Content.Load<Texture2D>("ButtonSliced"));
+            textures.Add("ButtonSliced", Content.Load<Texture2D>(@"Tex\ButtonSliced"));
 
             // Initialise Console
             console = new Console(
