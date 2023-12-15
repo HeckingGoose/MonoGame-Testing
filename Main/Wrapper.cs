@@ -34,6 +34,9 @@ namespace Main
         // Texture Tracking
         private Dictionary<string, Texture2D> textures;
 
+        // Shader Tracking
+        private Dictionary<string, Effect> shaders;
+
         // Font Tracking
         private Dictionary<string, SpriteFont> fonts;
 
@@ -54,6 +57,7 @@ namespace Main
             currentLevel = State.Level.Default_Loading;
             textures = new Dictionary<string, Texture2D>();
             fonts = new Dictionary<string, SpriteFont>();
+            shaders = new Dictionary<string, Effect>();
 
             // Setup keymap
             keyMap = new Dictionary<Keys, State.Key>
@@ -69,23 +73,27 @@ namespace Main
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // Load fonts
-            fonts.Add("Arimo_12", Content.Load<SpriteFont>(@"Fon\Arimo_12"));
+            fonts.Add("Candara_12", Content.Load<SpriteFont>(@"Fon\Candara_12"));
 
             // Load Textures
             textures.Add("ButtonSliced", Content.Load<Texture2D>(@"Tex\ButtonSliced"));
+
+            // Load Shaders
+            shaders.Add("TileTexture", Content.Load<Effect>(@"Shd\TileTexture"));
 
             // Initialise Console
             console = new Console(
                 ref _graphics,
                 ref _spriteBatch,
-                fonts["Arimo_12"],
+                fonts["Candara_12"],
                 textures["ButtonSliced"],
                 new Rectangle(
                     200,
                     200,
                     _graphics.PreferredBackBufferWidth - 40,
                     _graphics.PreferredBackBufferHeight - 40
-                    )
+                    ),
+                shaders["TileTexture"]
                 );
         }
 

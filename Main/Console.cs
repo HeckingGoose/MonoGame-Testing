@@ -78,6 +78,7 @@ namespace Main
         // Console Texture Management
         private Texture2D _baseTexture;
         private Texture2D _windowTexture;
+        private Effect _tileTextureShader;
 
         // Constructors
         public Console(
@@ -86,6 +87,7 @@ namespace Main
             SpriteFont font,
             Texture2D baseTexture,
             Rectangle minMaxSize,
+            Effect tileTextureShader,
             int defaultX = 20,
             int defaultY = 20,
             Vector2 defaultSize = new Vector2()
@@ -107,6 +109,7 @@ namespace Main
             _queueLength = (uint)_messages.Count;
             _shown = true;
             _minMaxSize = minMaxSize;
+            _tileTextureShader = tileTextureShader;
 
             // Declare window
             if (defaultSize == Vector2.Zero)
@@ -129,7 +132,16 @@ namespace Main
             }
 
             // Size window texture
-            _windowTexture = GenerateTiledTexture(baseTexture, _window.Width, _window.Height);
+            _windowTexture = new Texture2D(_graphics.GraphicsDevice, _window.Width, _window.Height, false, SurfaceFormat.Color, ShaderAccess.ReadWrite);
+            _tileTextureShader.Parameters["InputTexture"].SetValue(_baseTexture);
+            _tileTextureShader.Parameters["OutputTexture"].SetValue(_windowTexture);
+            foreach (var pass in _tileTextureShader.CurrentTechnique.Passes)
+            {
+                pass.ApplyCompute();
+                _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)baseTexture.Width / 8), (int)Math.Ceiling((float)baseTexture.Height / 8), 1);
+            }
+
+            //_windowTexture = GenerateTiledTexture(baseTexture, _window.Width, _window.Height);
         }
 
         // Methods
