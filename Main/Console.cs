@@ -194,7 +194,6 @@ namespace Main
             _shown = false;
         }
         #endregion
-    
         private Texture2D GenerateTiledTexture(Texture2D inputTexture, int targetWidth, int targetHeight)
         {
             // Values that may be worth changing at a later date
