@@ -13,5 +13,11 @@ namespace Main
             Default_Loading,
             Default_Main
         }
+        public enum Key
+        {
+            Released,
+            Pressed,
+            Held
+        }
     }
 }

@@ -37,6 +37,9 @@ namespace Main
         // Font Tracking
         private Dictionary<string, SpriteFont> fonts;
 
+        // Keyboard Tracking
+        private Dictionary<Keys, State.Key> keyMap;
+
         // ENDVAR
         public Wrapper()
         {
@@ -51,6 +54,12 @@ namespace Main
             currentLevel = State.Level.Default_Loading;
             textures = new Dictionary<string, Texture2D>();
             fonts = new Dictionary<string, SpriteFont>();
+
+            // Setup keymap
+            keyMap = new Dictionary<Keys, State.Key>
+            {
+                { Keys.OemTilde, State.Key.Released }
+            };
 
             base.Initialize();
         }
@@ -70,14 +79,39 @@ namespace Main
                 ref _graphics,
                 ref _spriteBatch,
                 fonts["Arimo_12"],
-                textures["ButtonSliced"]
+                textures["ButtonSliced"],
+                new Rectangle(
+                    200,
+                    200,
+                    _graphics.PreferredBackBufferWidth - 40,
+                    _graphics.PreferredBackBufferHeight - 40
+                    )
                 );
-
-            console.ShowConsole();
         }
 
         protected override void Update(GameTime gameTime)
         {
+            // Handle keyboard input
+            KeyboardState boardState = Keyboard.GetState();
+
+            // Loop through every key in the keymap
+            foreach (KeyValuePair<Keys, State.Key> kvp in keyMap)
+            {
+                // If the key is pressed
+                if (boardState.IsKeyDown(kvp.Key))
+                {
+                    if (keyMap[kvp.Key] != State.Key.Held)
+                    {
+                        keyMap[kvp.Key]++;
+                    }
+                }
+                // If the key was released
+                else
+                {
+                    keyMap[kvp.Key] = State.Key.Released;
+                }
+            }
+
             // Run logic for current level
             switch (currentLevel)
             {
@@ -103,6 +137,7 @@ namespace Main
 
             // Run logic for console window (if there is any to run)
             console.RunLogic(
+                in keyMap
                 );
 
             base.Update(gameTime);

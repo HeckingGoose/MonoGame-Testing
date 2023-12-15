@@ -1,4 +1,4 @@
-﻿internal class Program
+﻿internal class Startup
 {
     private static void Main(string[] args)
     {

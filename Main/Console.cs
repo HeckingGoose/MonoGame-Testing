@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -65,9 +66,13 @@ namespace Main
         private Queue<ConsoleMessage> _messages;
         private string _messagesAsString;
         private uint _queueLength;
+        private Vector2 _queueSize;
+
+        // Window Tracking
+        private Rectangle _window;
+        private Rectangle _minMaxSize;
 
         // Console State Tracking
-        private Rectangle _window;
         private bool _shown;
 
         // Console Texture Management
@@ -79,7 +84,11 @@ namespace Main
             ref GraphicsDeviceManager graphics,
             ref SpriteBatch spriteBatch,
             SpriteFont font,
-            Texture2D baseTexture
+            Texture2D baseTexture,
+            Rectangle minMaxSize,
+            int defaultX = 20,
+            int defaultY = 20,
+            Vector2 defaultSize = new Vector2()
             )
         {
             // Set references to graphics device and spritebatch
@@ -97,20 +106,45 @@ namespace Main
             _messagesAsString = string.Empty;
             _queueLength = (uint)_messages.Count;
             _shown = true;
-            _window = new Rectangle(
-                20,
-                20,
-                _graphics.PreferredBackBufferWidth / 2,
-                _graphics.PreferredBackBufferHeight / 2
-                );
+            _minMaxSize = minMaxSize;
+
+            // Declare window
+            if (defaultSize == Vector2.Zero)
+            {
+                _window = new Rectangle(
+                    defaultX,
+                    defaultY,
+                    _graphics.PreferredBackBufferWidth / 2,
+                    _graphics.PreferredBackBufferHeight / 2
+                    );
+            }
+            else
+            {
+                _window = new Rectangle(
+                    defaultX,
+                    defaultY,
+                    (int)defaultSize.X,
+                    (int)defaultSize.Y
+                    );
+            }
 
             // Size window texture
             _windowTexture = GenerateTiledTexture(baseTexture, _window.Width, _window.Height);
         }
 
         // Methods
-        public void RunLogic()
+        public void RunLogic(
+            in Dictionary<Keys, State.Key> keyMap
+            )
         {
+            // If the console needs to be toggled
+            if (keyMap[Keys.OemTilde] == State.Key.Pressed)
+            {
+                // Toggle console
+                _shown = !_shown;
+            }
+
+            // If the number of messages has changed
             if (_queueLength != (uint)_messages.Count)
             {
                 // Re-evaluate the value of messagesAsString
@@ -120,7 +154,7 @@ namespace Main
                 }
 
                 // Raise queue re-measure
-                _font.MeasureString(_messagesAsString);
+                _queueSize = _font.MeasureString(_messagesAsString);
             }
         }
         public void RunGraphics()
@@ -174,99 +208,228 @@ namespace Main
             Color[] textureData = new Color[inputTexture.Height * inputTexture.Width];
             inputTexture.GetData(textureData);
 
-            // Draw top left, top right, bottom left and bottom right parts of texture
-            for (int i = 0; i < subDivisionSize; i++)
-            {
-                // Define texture data cache
-                Color[] dataCache = new Color[subDivisionSize];
+            // Do top-left
+            StretchRect(
+                new Rectangle(
+                    0,
+                    0,
+                    subDivisionSize,
+                    subDivisionSize
+                    ),
+                new Rectangle(
+                    0,
+                    0,
+                    subDivisionSize,
+                    subDivisionSize
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
 
-                // Top left
-                Array.Copy(
-                    textureData,
-                    i * inputTexture.Width,
-                    dataCache,
+            // Do top-right
+            StretchRect(
+                new Rectangle(
+                    inputTexture.Width - subDivisionSize,
                     0,
+                    subDivisionSize,
                     subDivisionSize
-                    );
-                outputTexture.SetData(
+                    ),
+                new Rectangle(
+                    outputTexture.Width - subDivisionSize,
                     0,
-                    new Rectangle(
-                        0,
-                        i,
-                        subDivisionSize,
-                        1
-                        ),
-                    dataCache,
-                    0,
+                    subDivisionSize,
                     subDivisionSize
-                    );
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
 
-                // Top right
-                Array.Copy(
-                    textureData,
-                    i * inputTexture.Width + inputTexture.Width - 1 - subDivisionSize,
-                    dataCache,
+            // Do bottom-left
+            StretchRect(
+                new Rectangle(
                     0,
+                    inputTexture.Height - subDivisionSize,
+                    subDivisionSize,
                     subDivisionSize
-                    );
-                outputTexture.SetData(
+                    ),
+                new Rectangle(
                     0,
-                    new Rectangle(
-                        outputTexture.Width - subDivisionSize - 1,
-                        i,
-                        subDivisionSize,
-                        1
-                        ),
-                    dataCache,
-                    0,
+                    outputTexture.Height - subDivisionSize,
+                    subDivisionSize,
                     subDivisionSize
-                    );
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
 
-                // Bottom left
-                Array.Copy(
-                    textureData,
-                    textureData.Length - (subDivisionSize - i) * inputTexture.Width,
-                    dataCache,
-                    0,
+            // Do bottom-right
+            StretchRect(
+                new Rectangle(
+                    inputTexture.Width - subDivisionSize,
+                    inputTexture.Height - subDivisionSize,
+                    subDivisionSize,
                     subDivisionSize
-                    );
-                outputTexture.SetData(
-                    0,
-                    new Rectangle(
-                        0,
-                        outputTexture.Height - 1 - subDivisionSize + i,
-                        subDivisionSize,
-                        1
-                        ),
-                    dataCache,
-                    0,
+                    ),
+                new Rectangle(
+                    outputTexture.Width - subDivisionSize,
+                    outputTexture.Height - subDivisionSize,
+                    subDivisionSize,
                     subDivisionSize
-                    );
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
 
-                // Bottom right
-                Array.Copy(
-                    textureData,
-                    textureData.Length - (subDivisionSize - i - 1) * inputTexture.Width - subDivisionSize,
-                    dataCache,
+            // Do top
+            StretchRect(
+                new Rectangle(
+                    subDivisionSize,
                     0,
+                    inputTexture.Width - subDivisionSize * 2,
                     subDivisionSize
-                    );
-                outputTexture.SetData(
+                ),
+                new Rectangle(
+                    subDivisionSize,
                     0,
-                    new Rectangle(
-                        outputTexture.Width - 1 - subDivisionSize,
-                        outputTexture.Height - 1 - subDivisionSize + i,
-                        subDivisionSize,
-                        1
-                        ),
-                    dataCache,
-                    0,
+                    outputTexture.Width - subDivisionSize * 2,
                     subDivisionSize
-                    );
-            }
+                ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
+
+            // Do bottom
+            StretchRect(
+                new Rectangle(
+                    subDivisionSize,
+                    inputTexture.Height - subDivisionSize,
+                    inputTexture.Width - subDivisionSize * 2,
+                    subDivisionSize
+                ),
+                new Rectangle(
+                    subDivisionSize,
+                    outputTexture.Height - subDivisionSize,
+                    outputTexture.Width - subDivisionSize * 2,
+                    subDivisionSize
+                ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
+
+            // Do left
+            StretchRect(
+                new Rectangle(
+                    0,
+                    subDivisionSize,
+                    subDivisionSize,
+                    inputTexture.Height - subDivisionSize * 2
+                    ),
+                new Rectangle(
+                    0,
+                    subDivisionSize,
+                    subDivisionSize,
+                    outputTexture.Height - subDivisionSize * 2
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
+
+            // Do right
+            StretchRect(
+                new Rectangle(
+                    inputTexture.Width - subDivisionSize,
+                    subDivisionSize,
+                    subDivisionSize,
+                    inputTexture.Height - subDivisionSize * 2
+                    ),
+                new Rectangle(
+                    outputTexture.Width - subDivisionSize,
+                    subDivisionSize,
+                    subDivisionSize,
+                    outputTexture.Height - subDivisionSize * 2
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
+
+            // Do Middle
+            StretchRect(
+                new Rectangle(
+                    subDivisionSize,
+                    subDivisionSize,
+                    inputTexture.Width - subDivisionSize * 2,
+                    inputTexture.Height - subDivisionSize * 2
+                    ),
+                new Rectangle(
+                    subDivisionSize,
+                    subDivisionSize,
+                    outputTexture.Width - subDivisionSize * 2,
+                    outputTexture.Height - subDivisionSize * 2
+                    ),
+                in inputTexture,
+                in textureData,
+                ref outputTexture
+                );
 
             // Return result
             return outputTexture;
+        }
+        private void StretchRect(
+            Rectangle baseRect,
+            Rectangle stretchRect,
+            in Texture2D inputTexture,
+            in Color[] textureData,
+            ref Texture2D outputTexture
+            )
+        {
+            // Calculate stretch factor and remaining pixels
+            Rectangle stretch = new Rectangle(
+                stretchRect.Width / baseRect.Width,
+                stretchRect.Height / baseRect.Height,
+                stretchRect.Width % baseRect.Width,
+                stretchRect.Height % baseRect.Height
+                );
+
+            // Copy across texture data
+            for (int y = 0; y < baseRect.Height; y++)
+            {
+                for (int sy = 0; sy < (y + 1 != baseRect.Height ? stretch.Y : stretch.Y + stretch.Height); sy++)
+                {
+                    for (int x = 0; x < baseRect.Width; x++) // Loop through the rect representing the top of the texture
+                    {
+                        // Declare colour arrays
+                        Color[] dataCache = x + 1 != baseRect.Width ? new Color[stretch.X] : new Color[stretch.X + stretch.Width];
+
+                        for (int sx = 0; sx < dataCache.Length; sx++) // Loop as many times as there is stretch factor
+                        {
+                            // Fetch correct pixel for top
+                            dataCache[sx] = textureData[baseRect.X + x + inputTexture.Width * y + baseRect.Y * inputTexture.Width];
+                        }
+
+                        // Apply stretch
+                        outputTexture.SetData(
+                            0,
+                            new Rectangle(
+                                stretchRect.X + (x * stretch.X),
+                                stretchRect.Y + (y * stretch.Y) + sy,
+                                dataCache.Length,
+                                1
+                                ),
+                            dataCache,
+                            0,
+                            dataCache.Length
+                            );
+                    }
+                }
+            }
         }
     }
 }
