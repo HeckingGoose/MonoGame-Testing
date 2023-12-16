@@ -93,7 +93,7 @@ namespace Main
                     _graphics.PreferredBackBufferWidth / 2 - 40,
                     _graphics.PreferredBackBufferHeight / 2 - 40
                     ),
-                shaders["TileTexture"],
+                shaders["TileTexture"]
                 );
         }
 
