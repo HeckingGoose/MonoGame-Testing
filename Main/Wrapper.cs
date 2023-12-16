@@ -90,11 +90,10 @@ namespace Main
                 new Rectangle(
                     200,
                     200,
-                    30000,
-                    30000
+                    _graphics.PreferredBackBufferWidth / 2 - 40,
+                    _graphics.PreferredBackBufferHeight / 2 - 40
                     ),
                 shaders["TileTexture"],
-                defaultSize: new Vector2(29999,29999)
                 );
         }
 
