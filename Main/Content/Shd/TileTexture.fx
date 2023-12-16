@@ -16,10 +16,6 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
     uint stretchX;
     uint stretchY;
     uint uintWaste;
-    uint scaleX;
-    uint scaleY;
-    uint extraX;
-    uint extraY;
     uint subDivisionSize;
     
     // Get texture sizes
@@ -29,27 +25,160 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
     // Get the size of each subdivision
     subDivisionSize = baseX / SUBDIVISIONS;
     
-    // Calculate scales
-    scaleX = stretchX / baseX;
-    scaleY = stretchY / baseY;
-    
-    // Calculate repeats
-    extraX = stretchX % baseX;
-    
-    extraY = stretchY % baseY;
-    
-    
-    // Loop through y direction
-    for (int y = 0; y < scaleY; y++)
+    // Figure out what section we're operating in
+    if (globalID.y < subDivisionSize)
     {
-        // Loop through x direction
-        for (int x = 0; x < scaleX; x++)
+        // Operating somewhere in the top region
+        if (globalID.x < subDivisionSize)
         {
-            // Draw each pixel one at a time
-            OutputTexture[uint2((globalID.x * scaleX) + x, (globalID.y * scaleY) + y)] = pixel;
+            // Operating in the top left, so just do a direct pixel copy
+            OutputTexture[globalID.xy] = pixel;
+        }
+        else if (globalID.x < baseX - subDivisionSize)
+        {
+            // Operating in the top middle
+            
+            // Declare stretch scale
+            uint scaleX = (stretchX - subDivisionSize * 2) / (baseX - subDivisionSize * 2);
+            
+            // Stretch
+            for (int x = 0; x <= scaleX; x++)
+            {
+                if (
+                    globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) >= subDivisionSize
+                    && globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) < stretchX - subDivisionSize
+                    )
+                {
+                    // Draw each pixel one at a time
+                    OutputTexture[uint2(globalID.x + x + ((globalID.x - subDivisionSize) * scaleX), globalID.y)] = pixel;
+                }
+            }
+        }
+        else
+        {
+            // Operating in the top right, so do a translated pixel copy
+            OutputTexture[uint2(stretchX - (subDivisionSize - (globalID.x - subDivisionSize * 2)), globalID.y)] = pixel;
         }
     }
-    
+    else if (globalID.y < baseY - subDivisionSize)
+    {
+        // Operating somewhere in the middle region
+        if (globalID.x < subDivisionSize)
+        {
+            // Operating in the middle left
+           
+            // Declare stretch scale
+            uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
+            
+            // Stretch
+            for (int y = 0; y <= scaleY; y++)
+            {
+                if (
+                    globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) >= subDivisionSize
+                    && globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) < stretchY - subDivisionSize
+                    )
+                {
+                    // Draw each pixel one at a time
+                    OutputTexture[
+                        uint2(
+                        globalID.x,
+                        globalID.y + y + ((globalID.y - subDivisionSize) * scaleY)
+                        )] = pixel;
+                }
+            }
+        }
+        else if (globalID.x < baseX - subDivisionSize)
+        {
+            // Operating in the middle middle
+            
+            // Calculate scales
+            uint scaleX = (stretchX - subDivisionSize * 2) / (baseX - subDivisionSize * 2);
+            uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
+            
+            // Loop through every pixel in the target
+            for (int y = 0; y <= scaleY; y++)
+            {
+                for (int x = 0; x <= scaleX; x++)
+                {
+                    // If the pixel to plot is in a valid spot (bad math patch)
+                    if (
+                        globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) <= stretchX - subDivisionSize
+                        && globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) <= stretchY - subDivisionSize
+                        )
+                    {
+                        // Copy across a single pixel of data
+                        OutputTexture[
+                            uint2(
+                            globalID.x + x + ((globalID.x - subDivisionSize) * scaleX),
+                            globalID.y + y + ((globalID.y - subDivisionSize) * scaleY)
+                            )] = pixel;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // Operating in the middle right
+            
+            // Declare stretch scale
+            uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
+            
+            // Stretch
+            for (int y = 0; y <= scaleY; y++)
+            {
+                if (
+                    globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) >= subDivisionSize
+                    && globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) < stretchY - subDivisionSize
+                    )
+                {
+                    // Draw each pixel one at a time
+                    OutputTexture[
+                        uint2(
+                        stretchX - (subDivisionSize - (globalID.x - subDivisionSize * 2)),
+                        globalID.y + y + ((globalID.y - subDivisionSize) * scaleY)
+                        )] = pixel;
+                }
+            }
+        }
+    }
+    else
+    {
+        // Operating somewhere in the bottom region
+        if (globalID.x < subDivisionSize)
+        {
+            // Operating in the bottom left, so just do a translated pixel copy
+            OutputTexture[uint2(globalID.x, stretchY - (subDivisionSize - (globalID.y - subDivisionSize * 2)))] = pixel;
+        }
+        else if (globalID.x < baseX - subDivisionSize)
+        {
+            // Operating in the bottom middle
+            
+            // Declare stretch scale
+            uint scaleX = (stretchX - subDivisionSize * 2) / (baseX - subDivisionSize * 2);
+            
+            // Stretch
+            for (int x = 0; x <= scaleX; x++)
+            {
+                if (
+                    globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) >= subDivisionSize
+                    && globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) < stretchX - subDivisionSize
+                    )
+                {
+                    // Draw each pixel one at a time
+                    OutputTexture[
+                        uint2(
+                        globalID.x + x + ((globalID.x - subDivisionSize) * scaleX),
+                        stretchY - (subDivisionSize - (globalID.y - subDivisionSize * 2))
+                        )] = pixel;
+                }
+            }
+        }
+        else
+        {
+            // Operating in the bottom right, so just do a translated pixel copy
+            OutputTexture[uint2(stretchX - (subDivisionSize - (globalID.x - subDivisionSize * 2)), stretchY - (subDivisionSize - (globalID.y - subDivisionSize * 2)))] = pixel;
+        }
+    }
 }
 
 technique Tech0

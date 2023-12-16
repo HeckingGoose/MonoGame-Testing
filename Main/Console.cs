@@ -140,8 +140,6 @@ namespace Main
                 pass.ApplyCompute();
                 _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)baseTexture.Width / 8), (int)Math.Ceiling((float)baseTexture.Height / 8), 1);
             }
-
-            //_windowTexture = GenerateTiledTexture(baseTexture, _window.Width, _window.Height);
         }
 
         // Methods
