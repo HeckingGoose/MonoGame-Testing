@@ -42,7 +42,7 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
             uint scaleX = (stretchX - subDivisionSize * 2) / (baseX - subDivisionSize * 2);
             
             // Stretch
-            for (int x = 0; x <= scaleX; x++)
+            for (uint x = 0; x <= scaleX; x++)
             {
                 if (
                     globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) >= subDivisionSize
@@ -71,7 +71,7 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
             uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
             
             // Stretch
-            for (int y = 0; y <= scaleY; y++)
+            for (uint y = 0; y <= scaleY; y++)
             {
                 if (
                     globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) >= subDivisionSize
@@ -96,9 +96,9 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
             uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
             
             // Loop through every pixel in the target
-            for (int y = 0; y <= scaleY; y++)
+            for (uint y = 0; y <= scaleY; y++)
             {
-                for (int x = 0; x <= scaleX; x++)
+                for (uint x = 0; x <= scaleX; x++)
                 {
                     // If the pixel to plot is in a valid spot (bad math patch)
                     if (
@@ -124,7 +124,7 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
             uint scaleY = (stretchY - subDivisionSize * 2) / (baseY - subDivisionSize * 2);
             
             // Stretch
-            for (int y = 0; y <= scaleY; y++)
+            for (uint y = 0; y <= scaleY; y++)
             {
                 if (
                     globalID.y + y + ((globalID.y - subDivisionSize) * scaleY) >= subDivisionSize
@@ -157,7 +157,7 @@ void CS(uint3 localID: SV_GroupThreadID, uint3 groupID : SV_GroupID,
             uint scaleX = (stretchX - subDivisionSize * 2) / (baseX - subDivisionSize * 2);
             
             // Stretch
-            for (int x = 0; x <= scaleX; x++)
+            for (uint x = 0; x <= scaleX; x++)
             {
                 if (
                     globalID.x + x + ((globalID.x - subDivisionSize) * scaleX) >= subDivisionSize
