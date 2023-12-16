@@ -43,6 +43,9 @@ namespace Main
         // Keyboard Tracking
         private Dictionary<Keys, State.Key> keyMap;
 
+        // Mouse Tracking
+        private State.Mouse mouseState;
+
         // ENDVAR
         public Wrapper()
         {
@@ -58,6 +61,7 @@ namespace Main
             textures = new Dictionary<string, Texture2D>();
             fonts = new Dictionary<string, SpriteFont>();
             shaders = new Dictionary<string, Effect>();
+            mouseState = new State.Mouse();
 
             // Setup keymap
             keyMap = new Dictionary<Keys, State.Key>
@@ -102,6 +106,10 @@ namespace Main
             // Handle keyboard input
             KeyboardState boardState = Keyboard.GetState();
 
+            // Get mouse input
+            MouseState mouseGet = Mouse.GetState();
+            mouseState.Position = mouseGet.Position;
+
             // Loop through every key in the keymap
             foreach (KeyValuePair<Keys, State.Key> kvp in keyMap)
             {
@@ -119,6 +127,42 @@ namespace Main
                     keyMap[kvp.Key] = State.Key.Released;
                 }
             }
+
+            // Understand mouse input
+            void HandleMouseButton(in ButtonState buttonState, ref State.Key mouseButton)
+            {
+                // If mouse is currently down
+                if (buttonState == ButtonState.Pressed)
+                {
+                    switch (mouseButton)
+                    {
+                        // If mouse is not pressed yet
+                        case State.Key.Released:
+                            // Set mouse as pressed
+                            mouseButton = State.Key.Pressed;
+                            return;
+                        case State.Key.Pressed:
+                            // Set mouse as held
+                            mouseButton = State.Key.Held;
+                            return;
+                    }
+                }
+                // If mouse is not down
+                else
+                {
+                    mouseButton = State.Key.Released;
+                    return;
+                }
+            }
+            State.Key temp = mouseState.LeftState;
+            HandleMouseButton(mouseGet.LeftButton, ref temp);
+            mouseState.LeftState = temp;
+            temp = mouseState.RightState;
+            HandleMouseButton(mouseGet.RightButton, ref temp);
+            mouseState.RightState = temp;
+            temp = mouseState.MiddleState;
+            HandleMouseButton(mouseGet.MiddleButton, ref temp);
+            mouseState.MiddleState = temp;
 
             // Run logic for current level
             switch (currentLevel)
@@ -145,7 +189,8 @@ namespace Main
 
             // Run logic for console window (if there is any to run)
             console.RunLogic(
-                in keyMap
+                in keyMap,
+                in mouseState
                 );
 
             base.Update(gameTime);

@@ -156,7 +156,8 @@ namespace Main
 
         // Methods
         public void RunLogic(
-            in Dictionary<Keys, State.Key> keyMap
+            in Dictionary<Keys, State.Key> keyMap,
+            in State.Mouse mouseState
             )
         {
             // If the console needs to be toggled
@@ -164,6 +165,16 @@ namespace Main
             {
                 // Toggle console
                 _shown = !_shown;
+            }
+
+            // Console close button functionality
+            if (
+                _shown
+                && _closeButtonRect.Intersects(new Rectangle(mouseState.Position, Point.Zero))
+                && mouseState.LeftState == State.Key.Pressed
+                )
+            {
+                _shown = false;
             }
 
             // If the number of messages has changed
