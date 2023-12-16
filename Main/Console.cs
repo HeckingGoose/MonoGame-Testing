@@ -80,6 +80,9 @@ namespace Main
         private Texture2D _windowTexture;
         private Effect _tileTextureShader;
 
+        // Cross rect management
+        private Rectangle _closeButtonRect;
+
         // Constructors
         public Console(
             ref GraphicsDeviceManager graphics,
@@ -131,6 +134,15 @@ namespace Main
                     );
             }
 
+            // Generate close button rect
+            Vector2 temp = _font.MeasureString("X");
+            _closeButtonRect = new Rectangle(
+                _window.X + _window.Width - (int)temp.X - 10,
+                _window.Y + 2,
+                (int)temp.X,
+                (int)temp.Y
+                );
+
             // Size window texture
             _windowTexture = new Texture2D(_graphics.GraphicsDevice, _window.Width, _window.Height, false, SurfaceFormat.Color, ShaderAccess.ReadWrite);
             _tileTextureShader.Parameters["InputTexture"].SetValue(_baseTexture);
@@ -171,8 +183,14 @@ namespace Main
         {
             if (_shown)
             {
-                // Draw console
+                // Draw console window
                 _spriteBatch.Draw(_windowTexture, _window, Color.White);
+
+                // Draw console title
+                _spriteBatch.DrawString(_font, "Console", new Vector2(_window.X + 15, _window.Y + 2), new Color(1f, 1f, 1f, 0.75f));
+
+                // Draw console X
+                _spriteBatch.DrawString(_font, "X", new Vector2(_closeButtonRect.X, _closeButtonRect.Y), new Color(1f, 1f, 1f, 0.75f));
             }
         }
 
