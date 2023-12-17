@@ -233,7 +233,7 @@ namespace Main
             _shown = false;
         }
         #endregion
-        private Texture2D GenerateTiledTexture(Texture2D inputTexture, int targetWidth, int targetHeight)
+        private Texture2D CPU_GenerateTiledTexture(Texture2D inputTexture, int targetWidth, int targetHeight)
         {
             // Values that may be worth changing at a later date
             const int SUBDIVISIONS = 3;
@@ -247,7 +247,7 @@ namespace Main
             inputTexture.GetData(textureData);
 
             // Do top-left
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     0,
                     0,
@@ -266,7 +266,7 @@ namespace Main
                 );
 
             // Do top-right
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     inputTexture.Width - subDivisionSize,
                     0,
@@ -285,7 +285,7 @@ namespace Main
                 );
 
             // Do bottom-left
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     0,
                     inputTexture.Height - subDivisionSize,
@@ -304,7 +304,7 @@ namespace Main
                 );
 
             // Do bottom-right
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     inputTexture.Width - subDivisionSize,
                     inputTexture.Height - subDivisionSize,
@@ -323,7 +323,7 @@ namespace Main
                 );
 
             // Do top
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     subDivisionSize,
                     0,
@@ -342,7 +342,7 @@ namespace Main
                 );
 
             // Do bottom
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     subDivisionSize,
                     inputTexture.Height - subDivisionSize,
@@ -361,7 +361,7 @@ namespace Main
                 );
 
             // Do left
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     0,
                     subDivisionSize,
@@ -380,7 +380,7 @@ namespace Main
                 );
 
             // Do right
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     inputTexture.Width - subDivisionSize,
                     subDivisionSize,
@@ -399,7 +399,7 @@ namespace Main
                 );
 
             // Do Middle
-            StretchRect(
+            CPU_StretchRect(
                 new Rectangle(
                     subDivisionSize,
                     subDivisionSize,
@@ -420,7 +420,7 @@ namespace Main
             // Return result
             return outputTexture;
         }
-        private void StretchRect(
+        private void CPU_StretchRect(
             Rectangle baseRect,
             Rectangle stretchRect,
             in Texture2D inputTexture,
