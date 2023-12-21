@@ -92,10 +92,10 @@ namespace Main
                 fonts["Candara_12"],
                 textures["ButtonSliced"],
                 new Rectangle(
-                    200,
-                    200,
-                    _graphics.PreferredBackBufferWidth / 2 - 40,
-                    _graphics.PreferredBackBufferHeight / 2 - 40
+                    60,
+                    60,
+                    _graphics.PreferredBackBufferWidth - 40,
+                    _graphics.PreferredBackBufferHeight - 40
                     ),
                 shaders["TileTexture"]
                 );

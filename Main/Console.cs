@@ -54,6 +54,12 @@ namespace Main
             Error
         }
 
+        // Width of edge rect for detecting mouse hover
+        private const int EDGE_WIDTH = 16;
+
+        // Subdivision size
+        private const int SUBDIVISIONS = 3;
+
         // Variables
         // Builtin
         private GraphicsDeviceManager _graphics;
@@ -69,8 +75,13 @@ namespace Main
         private Vector2 _queueSize;
 
         // Window Tracking
+        private Rectangle _windowLastFrame;
         private Rectangle _window;
         private Rectangle _minMaxSize;
+
+        // Console drag tracking
+        private bool _drag = false;
+        private Point _dragOffset = Point.Zero;
 
         // Console State Tracking
         private bool _shown;
@@ -82,6 +93,12 @@ namespace Main
 
         // Cross rect management
         private Rectangle _closeButtonRect;
+
+        // Edge rect management
+        private Dictionary<string, Rectangle> _edgeRects;
+
+        // Resize mode
+        private string _resizeMode;
 
         // Constructors
         public Console(
@@ -134,6 +151,9 @@ namespace Main
                     );
             }
 
+            // Copy window info
+            _windowLastFrame = _window;
+
             // Generate close button rect
             Vector2 temp = _font.MeasureString("X");
             _closeButtonRect = new Rectangle(
@@ -150,12 +170,18 @@ namespace Main
             foreach (var pass in _tileTextureShader.CurrentTechnique.Passes)
             {
                 pass.ApplyCompute();
-                _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)baseTexture.Width / 8), (int)Math.Ceiling((float)baseTexture.Height / 8), 1);
+                _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)_baseTexture.Width / 8), (int)Math.Ceiling((float)_baseTexture.Height / 8), 1);
             }
+
+            // Generate edge rects
+            _edgeRects = GenerateEdgeRects();
+
+            // Set resize mode
+            _resizeMode = String.Empty;
         }
 
         // Methods
-        public void RunLogic(
+        public void RunLogic( // Add code for generating rects when console size changes
             in Dictionary<Keys, State.Key> keyMap,
             in State.Mouse mouseState
             )
@@ -167,15 +193,69 @@ namespace Main
                 _shown = !_shown;
             }
 
-            // Console close button functionality
-            if (
-                _shown
-                && _closeButtonRect.Intersects(new Rectangle(mouseState.Position, Point.Zero))
-                && mouseState.LeftState == State.Key.Pressed
-                )
+            // If the console is shown
+            if (_shown)
             {
-                _shown = false;
+                // If the left mouse button is pressed
+                if (mouseState.LeftState == State.Key.Pressed)
+                {
+                    // If the close button is pressed
+                    if (_closeButtonRect.Intersects(new Rectangle(mouseState.Position, Point.Zero)))
+                    {
+                        // Hide the console
+                        _shown = false;
+                    }
+
+                    // If the console is being moved
+                    else if (_edgeRects["TopBar"].Intersects(new Rectangle(mouseState.Position, Point.Zero)))
+                    {
+                        // Set the console state to being dragged
+                        _drag = true;
+
+                        // Calculate drag offset
+                        _dragOffset = new Point(
+                            _window.X - mouseState.Position.X,
+                            _window.Y - mouseState.Position.Y
+                            );
+                    }
+
+                    // Otherwise
+                    else
+                    {
+                        // Check if the mouse is attempting to resize the console
+                        foreach (KeyValuePair<string, Rectangle> kvp in _edgeRects)
+                        {
+                            // Is the mouse intersecting with this rect?
+                            if (kvp.Value.Intersects(new Rectangle(mouseState.Position, Point.Zero)))
+                            {
+                                // Set the resize mode to the key value (e.g. TopMiddle)
+                                _resizeMode = kvp.Key;
+
+                                // Exit the loop to save time
+                                break;
+                            }
+                        }
+                    }
+                }
+                // If the mouse is released
+                else if (mouseState.LeftState == State.Key.Released)
+                {
+                    // State that we are no longer dragging the window
+                    _drag = false;
+
+                    // Reset resize mode
+                    _resizeMode = String.Empty;
+
+                    // Generate new rects
+                    _edgeRects = GenerateEdgeRects();
+                }
             }
+
+            // Handle window dragging
+            ManageDrag(mouseState);
+
+            // Handle window resizing
+            ManageResize(mouseState);
 
             // If the number of messages has changed
             if (_queueLength != (uint)_messages.Count)
@@ -185,10 +265,38 @@ namespace Main
                 {
                     _messagesAsString += message.Message + "\n";
                 }
+                // CHANGE HOW MESSAGES ARE MEASURED TO USE A NEW SYSTEM OF CACHING EACH GLYPH SIZE, TO IMPLEMENT NEW LINES WHEN NEEDED
 
                 // Raise queue re-measure
                 _queueSize = _font.MeasureString(_messagesAsString);
             }
+
+            // Were any changes to the window made?
+            if (_windowLastFrame != _window)
+            {
+                // Generate new cross rect
+                Vector2 temp = _font.MeasureString("X");
+                _closeButtonRect = new Rectangle(
+                    _window.X + _window.Width - (int)temp.X - 10,
+                    _window.Y + 2,
+                    (int)temp.X,
+                    (int)temp.Y
+                    );
+
+                // Size window texture
+                _windowTexture.Dispose();
+                _windowTexture = new Texture2D(_graphics.GraphicsDevice, _window.Width, _window.Height, false, SurfaceFormat.Color, ShaderAccess.ReadWrite);
+                _tileTextureShader.Parameters["InputTexture"].SetValue(_baseTexture);
+                _tileTextureShader.Parameters["OutputTexture"].SetValue(_windowTexture);
+                foreach (var pass in _tileTextureShader.CurrentTechnique.Passes)
+                {
+                    pass.ApplyCompute();
+                    _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)_baseTexture.Width / 8), (int)Math.Ceiling((float)_baseTexture.Height / 8), 1);
+                }
+            }
+
+            // Copy window size
+            _windowLastFrame = _window;
         }
         public void RunGraphics()
         {
@@ -208,6 +316,340 @@ namespace Main
         public void Write(string message, Type type = Type.Log)
         {
             _messages.Enqueue(new ConsoleMessage(message, type));
+        }
+
+        private Dictionary<string, Rectangle> GenerateEdgeRects()
+        {
+            // Create new dictionary
+            Dictionary<string, Rectangle> edgeRects = new Dictionary<string, Rectangle>
+            {
+                {
+                    "TopBar",
+                    new Rectangle(
+                        _window.X,
+                        _window.Y,
+                        _window.Width,
+                        _baseTexture.Height / SUBDIVISIONS
+                        )
+                },
+                {
+                    "TopLeft",
+                    new Rectangle(
+                        _window.X - (EDGE_WIDTH / 2),
+                        _window.Y - (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                },
+                {
+                    "TopMiddle",
+                    new Rectangle(
+                        _window.X + (EDGE_WIDTH / 2),
+                        _window.Y - (EDGE_WIDTH / 2),
+                        _window.Width - EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                },
+                {
+                    "TopRight",
+                    new Rectangle(
+                        _window.X + _window.Width - (EDGE_WIDTH / 2),
+                        _window.Y - (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                },
+                {
+                    "MiddleLeft",
+                    new Rectangle(
+                        _window.X - (EDGE_WIDTH / 2),
+                        _window.Y + (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        _window.Height - EDGE_WIDTH
+                        )
+                },
+                {
+                    "MiddleRight",
+                    new Rectangle(
+                        _window.X + _window.Width - (EDGE_WIDTH / 2),
+                        _window.Y + (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        _window.Height - EDGE_WIDTH
+                        )
+                },
+                {
+                    "BottomLeft",
+                    new Rectangle(
+                        _window.X - (EDGE_WIDTH / 2),
+                        _window.Y + _window.Height - (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                },
+                {
+                    "BottomMiddle",
+                    new Rectangle(
+                        _window.X + (EDGE_WIDTH / 2),
+                        _window.Y + _window.Height - (EDGE_WIDTH / 2),
+                        _window.Width - EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                },
+                {
+                    "BottomRight",
+                    new Rectangle(
+                        _window.X + _window.Width - (EDGE_WIDTH / 2),
+                        _window.Y + _window.Height - (EDGE_WIDTH / 2),
+                        EDGE_WIDTH,
+                        EDGE_WIDTH
+                        )
+                }
+            };
+
+            // Return result
+            return edgeRects;
+        }
+        private void ManageDrag(State.Mouse mouseState)
+        {
+            // Is the window being dragged?
+            if (_drag)
+            {
+                // Move console window to mouse pos relative on the current drag offset
+                _window.X = mouseState.Position.X + _dragOffset.X;
+                _window.Y = mouseState.Position.Y + _dragOffset.Y;
+            }
+        }
+        private void ManageResize(State.Mouse mouseState)
+        {
+            // Is the window being resized?
+            if (_resizeMode != String.Empty)
+            {
+                // Declare position change variables
+                int sizeChangeX = 0;
+                int sizeChangeY = 0;
+                Point temp;
+
+                // Figure out what resize we should do
+                switch (_resizeMode)
+                {
+                    case "TopLeft":
+                        // Calculate position changes
+                        sizeChangeX = _window.X - mouseState.Position.X;
+                        sizeChangeY = _window.Y - mouseState.Position.Y;
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            _window.Height + sizeChangeY
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+
+                            // Set origin to new position
+                            _window.X = mouseState.Position.X;
+                        }
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+
+                            // Set origin to new position
+                            _window.Y = mouseState.Position.Y;
+                        }
+                        break;
+                    case "TopMiddle":
+                        // Calculate position change
+                        sizeChangeY = _window.Y - mouseState.Position.Y;
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            0,
+                            _window.Height + sizeChangeY
+                            );
+
+                        // | Check if point is valid
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+
+                            // Set origin to new position
+                            _window.Y = mouseState.Position.Y;
+                        }
+                        break;
+                    case "TopRight":
+                        // Calculate position changes
+                        sizeChangeX = mouseState.Position.X - (_window.X + _window.Width);
+                        sizeChangeY = _window.Y - mouseState.Position.Y;
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            _window.Height + sizeChangeY
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+                        }
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            && temp.Y != _window.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+
+                            // Set origin to new position
+                            _window.Y = mouseState.Position.Y;
+                        }
+                        break;
+                    case "MiddleLeft":
+                        // Calculate position changes
+                        sizeChangeX = _window.X - mouseState.Position.X;
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            0
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+
+                            // Apply origin change
+                            _window.X = mouseState.Position.X;
+                        }
+                        break;
+                    case "MiddleRight":
+                        // Calculate position changes
+                        sizeChangeX = mouseState.Position.X - (_window.X + _window.Width);
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            0
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+                        }
+                        break;
+                    case "BottomLeft":
+                        // Calculate position changes
+                        sizeChangeX = _window.X - mouseState.Position.X;
+                        sizeChangeY = mouseState.Position.Y - (_window.Y + _window.Height);
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            _window.Height + sizeChangeY
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+
+                            // Set origin to new position
+                            _window.X = mouseState.Position.X;
+                        }
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+                        }
+                        break;
+                    case "BottomMiddle":
+                        // Calculate position changes
+                        sizeChangeY = mouseState.Position.Y - (_window.Y + _window.Height);
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            _window.Height + sizeChangeY
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+                        }
+                        break;
+                    case "BottomRight":
+                        // Calculate position changes
+                        sizeChangeX = mouseState.Position.X - (_window.X + _window.Width);
+                        sizeChangeY = mouseState.Position.Y - (_window.Y + _window.Height);
+
+                        // Apply size change
+                        // | Create temp point
+                        temp = new Point(
+                            _window.Width + sizeChangeX,
+                            _window.Height + sizeChangeY
+                            );
+                        // | Check if point is valid
+                        if (
+                            temp.X <= _minMaxSize.Width
+                            && temp.X >= _minMaxSize.X
+                            )
+                        {
+                            // Apply size change
+                            _window.Width += sizeChangeX;
+                        }
+                        if (
+                            temp.Y <= _minMaxSize.Height
+                            && temp.Y >= _minMaxSize.Y
+                            )
+                        {
+                            // Apply size change
+                            _window.Height += sizeChangeY;
+                        }
+                        break;
+                }
+            }
         }
 
         #region Handle Console state
@@ -233,6 +675,7 @@ namespace Main
             _shown = false;
         }
         #endregion
+        #region Legacy Functions
         private Texture2D CPU_GenerateTiledTexture(Texture2D inputTexture, int targetWidth, int targetHeight)
         {
             // Values that may be worth changing at a later date
@@ -469,5 +912,6 @@ namespace Main
                 }
             }
         }
+        #endregion
     }
 }
