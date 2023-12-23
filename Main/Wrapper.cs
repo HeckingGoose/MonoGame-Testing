@@ -49,7 +49,10 @@ namespace Main
         // ENDVAR
         public Wrapper()
         {
-            _graphics = new GraphicsDeviceManager(this);
+            _graphics = new GraphicsDeviceManager(this)
+            { 
+                PreferredDepthStencilFormat = DepthFormat.Depth24Stencil8
+            };
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }
@@ -211,11 +214,11 @@ namespace Main
                     break;
             }
 
+            _spriteBatch.End();
+
             // Draw console window (or don't if it's hidden)
             console.RunGraphics(
                 );
-
-            _spriteBatch.End();
 
             base.Draw(gameTime);
         }

@@ -68,11 +68,14 @@ namespace Main
         // Font
         private SpriteFont _font;
 
+        // Text box
+        private FancyBox _fancyBox;
+
         // Queue Tracking
         private Queue<ConsoleMessage> _messages;
         private string _messagesAsString;
         private uint _queueLength;
-        private Vector2 _queueSize;
+        private uint _maxQueueSize;
 
         // Window Tracking
         private Rectangle _windowLastFrame;
@@ -100,6 +103,11 @@ namespace Main
         // Resize mode
         private string _resizeMode;
 
+        // Stencil States
+        private DepthStencilState _s1;
+        private DepthStencilState _s2;
+        private Texture2D _bufferTex;
+
         // Constructors
         public Console(
             ref GraphicsDeviceManager graphics,
@@ -110,7 +118,8 @@ namespace Main
             Effect tileTextureShader,
             int defaultX = 20,
             int defaultY = 20,
-            Vector2 defaultSize = new Vector2()
+            Vector2 defaultSize = new Vector2(),
+            uint maxQueueSize = 50
             )
         {
             // Set references to graphics device and spritebatch
@@ -127,6 +136,7 @@ namespace Main
             _messages = new Queue<ConsoleMessage>();
             _messagesAsString = string.Empty;
             _queueLength = (uint)_messages.Count;
+            _maxQueueSize = maxQueueSize;
             _shown = true;
             _minMaxSize = minMaxSize;
             _tileTextureShader = tileTextureShader;
@@ -173,11 +183,43 @@ namespace Main
                 _graphics.GraphicsDevice.DispatchCompute((int)Math.Ceiling((float)_baseTexture.Width / 8), (int)Math.Ceiling((float)_baseTexture.Height / 8), 1);
             }
 
+            // Create new fancyBox
+            _fancyBox = new FancyBox(
+                new Rectangle(
+                    _window.X + _baseTexture.Width / SUBDIVISIONS,
+                    _window.Y + _baseTexture.Height / SUBDIVISIONS,
+                    _window.Width - 2 * (_baseTexture.Width / SUBDIVISIONS),
+                    _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS)
+                    ),
+                String.Empty,
+                _font
+                );
+
             // Generate edge rects
             _edgeRects = GenerateEdgeRects();
 
             // Set resize mode
             _resizeMode = String.Empty;
+
+            // Create stencil states
+            _s1 = new DepthStencilState
+            {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.Always,
+                StencilPass = StencilOperation.Replace,
+                ReferenceStencil = 1,
+                DepthBufferEnable = false
+            };
+            _s2 = new DepthStencilState
+            {
+                StencilEnable = true,
+                StencilFunction = CompareFunction.LessEqual,
+                StencilPass = StencilOperation.Keep,
+                ReferenceStencil = 1,
+                DepthBufferEnable = false
+            };
+            _bufferTex = new Texture2D(_graphics.GraphicsDevice, 1, 1);
+            _bufferTex.SetData(new Color[] { Color.White });
         }
 
         // Methods
@@ -260,15 +302,19 @@ namespace Main
             // If the number of messages has changed
             if (_queueLength != (uint)_messages.Count)
             {
+                // Reset messages as string
+                _messagesAsString = String.Empty;
+
                 // Re-evaluate the value of messagesAsString
                 foreach (ConsoleMessage message in _messages)
                 {
-                    _messagesAsString += message.Message + "\n";
+                    _messagesAsString += $"\n {message.Message} ";
                 }
-                // CHANGE HOW MESSAGES ARE MEASURED TO USE A NEW SYSTEM OF CACHING EACH GLYPH SIZE, TO IMPLEMENT NEW LINES WHEN NEEDED
+                
+                // Pass this into fancy box
+                _fancyBox.Message = _messagesAsString;
 
-                // Raise queue re-measure
-                _queueSize = _font.MeasureString(_messagesAsString);
+                _queueLength = (uint)_messages.Count;
             }
 
             // Were any changes to the window made?
@@ -302,6 +348,9 @@ namespace Main
         {
             if (_shown)
             {
+                // Start draw
+                _spriteBatch.Begin();
+
                 // Draw console window
                 _spriteBatch.Draw(_windowTexture, _window, Color.White);
 
@@ -310,12 +359,50 @@ namespace Main
 
                 // Draw console X
                 _spriteBatch.DrawString(_font, "X", new Vector2(_closeButtonRect.X, _closeButtonRect.Y), new Color(1f, 1f, 1f, 0.75f));
+
+                // End draw
+                _spriteBatch.End();
+
+                // Draw stencil buffer
+                _spriteBatch.Begin(SpriteSortMode.Immediate, null, null, _s1);
+                _spriteBatch.Draw(
+                    _bufferTex,
+                    new Rectangle(
+                        _window.X + (_baseTexture.Width / SUBDIVISIONS),
+                        _window.Y + (_baseTexture.Height / SUBDIVISIONS),
+                        _window.Width - 2 * (_baseTexture.Width / SUBDIVISIONS),
+                        _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS)
+                        ),
+                    new Color(1, 1, 1, 0)
+                    );
+                _spriteBatch.End();
+
+                // Prep to draw text
+                _spriteBatch.Begin(SpriteSortMode.Immediate, null, null, _s2);
+
+                // Draw fancy box
+                _spriteBatch.DrawString(
+                    _fancyBox.Font,
+                    _fancyBox.Message,
+                    new Vector2(
+                        _fancyBox.Rect.X,
+                        _window.Y + _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS) - _fancyBox.MessageSize.Y
+                        ),
+                    Color.White
+                    );
+
+                _spriteBatch.End();
             }
         }
 
         public void Write(string message, Type type = Type.Log)
         {
             _messages.Enqueue(new ConsoleMessage(message, type));
+
+            if (_queueLength > _maxQueueSize)
+            {
+                _messages.Dequeue();
+            }
         }
 
         private Dictionary<string, Rectangle> GenerateEdgeRects()
@@ -418,6 +505,14 @@ namespace Main
                 _window.X = mouseState.Position.X + _dragOffset.X;
                 _window.Y = mouseState.Position.Y + _dragOffset.Y;
             }
+
+            // Pass this info to fancybox
+            _fancyBox.Rect = new Rectangle(
+                _window.X + _baseTexture.Width / SUBDIVISIONS,
+                _window.Y + _baseTexture.Height / SUBDIVISIONS,
+                _window.Width - 2 * (_baseTexture.Width / SUBDIVISIONS),
+                _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS)
+                );
         }
         private void ManageResize(State.Mouse mouseState)
         {
@@ -649,6 +744,14 @@ namespace Main
                         }
                         break;
                 }
+
+                // Pass this info to fancybox
+                _fancyBox.Rect = new Rectangle(
+                    _window.X + _baseTexture.Width / SUBDIVISIONS,
+                    _window.Y + _baseTexture.Height / SUBDIVISIONS,
+                    _window.Width - 2 * (_baseTexture.Width / SUBDIVISIONS),
+                    _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS)
+                    );
             }
         }
 
