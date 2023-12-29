@@ -60,6 +60,11 @@ namespace Main
         // Subdivision size
         private const int SUBDIVISIONS = 3;
 
+        // Default colours
+        private Color DEFAULT_COLOUR = Color.White;
+        private Color WARNING_COLOUR = new Color(245, 232, 89);
+        private Color ERROR_COLOUR = new Color(230, 31, 34);
+
         // Variables
         // Builtin
         private GraphicsDeviceManager _graphics;
@@ -192,7 +197,8 @@ namespace Main
                     _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS)
                     ),
                 String.Empty,
-                _font
+                _font,
+                DEFAULT_COLOUR
                 );
 
             // Generate edge rects
@@ -380,16 +386,24 @@ namespace Main
                 // Prep to draw text
                 _spriteBatch.Begin(SpriteSortMode.Immediate, null, null, _s2);
 
-                // Draw fancy box
-                _spriteBatch.DrawString(
-                    _fancyBox.Font,
-                    _fancyBox.Message,
+                // Draw fancy box text
+                _fancyBox.DrawBox(
                     new Vector2(
                         _fancyBox.Rect.X,
                         _window.Y + _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS) - _fancyBox.MessageSize.Y
                         ),
-                    Color.White
+                    _spriteBatch
                     );
+
+                //_spriteBatch.DrawString(
+                //    _fancyBox.Font,
+                //    _fancyBox.Message,
+                //    new Vector2(
+                //        _fancyBox.Rect.X,
+                //        _window.Y + _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS) - _fancyBox.MessageSize.Y
+                //        ),
+                //    Color.White
+                //    );
 
                 _spriteBatch.End();
             }
@@ -397,6 +411,17 @@ namespace Main
 
         public void Write(string message, Type type = Type.Log)
         {
+            // Append extra stuff if needed
+            switch (type)
+            {
+                case Type.Warn:
+                    message = $"{FancyBox.PRELIMINARY_CHARACTER}text-colour{FancyBox.SPLITTING_CHARACTER}{FancyBox.CreateValidValueString(WARNING_COLOUR.ToVector4().ToString())}{FancyBox.POSTLIMINARY_CHARACTER}Warning: " + message;
+                    break;
+                case Type.Error:
+                    message = $"{FancyBox.PRELIMINARY_CHARACTER}text-colour{FancyBox.SPLITTING_CHARACTER}{FancyBox.CreateValidValueString(ERROR_COLOUR.ToVector4().ToString())}{FancyBox.POSTLIMINARY_CHARACTER}Error: " + message;
+                    break;
+            }
+
             _messages.Enqueue(new ConsoleMessage(message, type));
 
             if (_queueLength > _maxQueueSize)

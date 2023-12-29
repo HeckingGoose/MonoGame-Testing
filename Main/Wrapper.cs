@@ -190,6 +190,10 @@ namespace Main
                     throw new Exception("Level does not exist!");
             }
 
+            // Add message
+            console.Write($"Hello, I'm an error message with one {FancyBox.PRELIMINARY_CHARACTER}text-colour{FancyBox.SPLITTING_CHARACTER}{FancyBox.CreateValidValueString(Color.Blue.ToVector4().ToString())}{FancyBox.POSTLIMINARY_CHARACTER}blue word!", Console.Type.Error);
+
+
             // Run logic for console window (if there is any to run)
             console.RunLogic(
                 in keyMap,
