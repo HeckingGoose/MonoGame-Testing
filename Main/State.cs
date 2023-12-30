@@ -11,8 +11,8 @@ namespace Main
     {
         public enum Level
         {
-            Default_Loading,
-            Default_Main
+            _3D_Test_Loading,
+            _3D_Test_Main
         }
         public enum Key
         {

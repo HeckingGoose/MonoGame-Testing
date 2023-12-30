@@ -395,16 +395,6 @@ namespace Main
                     _spriteBatch
                     );
 
-                //_spriteBatch.DrawString(
-                //    _fancyBox.Font,
-                //    _fancyBox.Message,
-                //    new Vector2(
-                //        _fancyBox.Rect.X,
-                //        _window.Y + _window.Height - 2 * (_baseTexture.Height / SUBDIVISIONS) - _fancyBox.MessageSize.Y
-                //        ),
-                //    Color.White
-                //    );
-
                 _spriteBatch.End();
             }
         }
@@ -429,7 +419,6 @@ namespace Main
                 _messages.Dequeue();
             }
         }
-
         private Dictionary<string, Rectangle> GenerateEdgeRects()
         {
             // Create new dictionary

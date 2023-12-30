@@ -26,7 +26,7 @@ namespace Main
         private Console console;
 
         // Level Definitions
-        private Default_Level defaultLevel;
+        private _3D_Test _3D_Test;
 
         // State Management
         private State.Level currentLevel;
@@ -35,6 +35,7 @@ namespace Main
         private Dictionary<string, Texture2D> textures;
 
         // Shader Tracking
+        private BasicEffect defaultShader;
         private Dictionary<string, Effect> shaders;
 
         // Font Tracking
@@ -60,7 +61,7 @@ namespace Main
         protected override void Initialize()
         {
             // Initialise Values
-            currentLevel = State.Level.Default_Loading;
+            currentLevel = State.Level._3D_Test_Loading;
             textures = new Dictionary<string, Texture2D>();
             fonts = new Dictionary<string, SpriteFont>();
             shaders = new Dictionary<string, Effect>();
@@ -71,6 +72,19 @@ namespace Main
             {
                 { Keys.OemTilde, State.Key.Released }
             };
+
+            // Set polygon drawing mode
+            RasterizerState state = new RasterizerState();
+            state.CullMode = CullMode.None;
+            state.FillMode = FillMode.WireFrame;
+            _graphics.GraphicsDevice.RasterizerState = state;
+
+            // Setup basic default shader
+            defaultShader = new BasicEffect(GraphicsDevice);
+            defaultShader.Projection = Matrix.CreatePerspectiveFieldOfView((float)Math.PI / 2, GraphicsDevice.Viewport.AspectRatio, 0.001f, 1000.0f);
+            defaultShader.View = Matrix.CreateLookAt(new Vector3(0, 0, -5), Vector3.Forward, Vector3.Up);
+            defaultShader.World = Matrix.Identity;
+            defaultShader.VertexColorEnabled = true;
 
             base.Initialize();
         }
@@ -87,6 +101,7 @@ namespace Main
 
             // Load Shaders
             shaders.Add("TileTexture", Content.Load<Effect>(@"Shd\TileTexture"));
+            shaders.Add("UnlitDefault", Content.Load<Effect>(@"Shd\UnlitDefault"));
 
             // Initialise Console
             console = new Console(
@@ -171,17 +186,18 @@ namespace Main
             switch (currentLevel)
             {
                 // Default Level
-                case State.Level.Default_Loading:
+                case State.Level._3D_Test_Loading:
                     // Initialise Default Level
-                    defaultLevel = new Default_Level(
+                    _3D_Test = new _3D_Test(
                         ref _graphics,
-                        ref _spriteBatch
+                        ref _spriteBatch,
+                        defaultShader
                         );
                     // Switch to Default Level
-                    currentLevel = State.Level.Default_Main;
+                    currentLevel = State.Level._3D_Test_Main;
                     break;
-                case State.Level.Default_Main:
-                    defaultLevel.RunLogic(
+                case State.Level._3D_Test_Main:
+                    _3D_Test.RunLogic(
                         );
                     break;
 
@@ -205,20 +221,20 @@ namespace Main
 
         protected override void Draw(GameTime gameTime)
         {
+            // Sanity call
             _spriteBatch.Begin();
+            _spriteBatch.End();
 
             // Draw current level
             switch (currentLevel)
             {
                 // Default Level
-                case State.Level.Default_Main:
+                case State.Level._3D_Test_Main:
                     GraphicsDevice.Clear(Color.CornflowerBlue);
-                    defaultLevel.RunGraphics(
+                    _3D_Test.RunGraphics(
                         );
                     break;
             }
-
-            _spriteBatch.End();
 
             // Draw console window (or don't if it's hidden)
             console.RunGraphics(

@@ -26,6 +26,12 @@
 /processorParam:DebugMode=Auto
 /build:Shd/TileTexture.fx
 
+#begin Shd/UnlitDefault.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Shd/UnlitDefault.fx
+
 #begin Tex/ButtonSliced.png
 /importer:TextureImporter
 /processor:TextureProcessor
